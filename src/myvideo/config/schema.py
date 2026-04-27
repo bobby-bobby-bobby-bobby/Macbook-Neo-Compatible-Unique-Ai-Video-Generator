@@ -21,8 +21,8 @@ class VideoConfig(BaseModel):
 
     total_duration_sec: int = Field(default=60, ge=10)
     target_fps: int = Field(default=24, ge=8)
-    base_width: int = Field(default=640, ge=256)
-    base_height: int = Field(default=360, ge=256)
+    base_width: int = Field(default=640, ge=64)
+    base_height: int = Field(default=360, ge=64)
     upscaled_width: int = Field(default=1280, ge=256)
     upscaled_height: int = Field(default=720, ge=256)
 

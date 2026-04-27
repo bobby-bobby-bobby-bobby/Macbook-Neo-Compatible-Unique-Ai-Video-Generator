@@ -96,8 +96,10 @@ def run_full_pipeline(
                 str(inb_dir),
                 "--frames-between",
                 "4",
-                "--image-size",
+                "--height",
                 str(config.video.base_height),
+                "--width",
+                str(config.video.base_width),
             ],
             check=True,
         )

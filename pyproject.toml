@@ -9,7 +9,21 @@ description = "Hybrid 2D video generation system optimized for Apple Silicon A18
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "myvideo team" }]
-dependencies = []
+dependencies = [
+    "torch>=2.2.0",
+    "torchvision>=0.17.0",
+    "numpy>=1.24.0",
+    "pydantic>=2.6.0",
+    "pyyaml>=6.0.1",
+    "click>=8.1.7",
+    "tqdm>=4.66.1",
+    "pillow>=10.2.0",
+    "opencv-python>=4.9.0.80",
+    "imageio>=2.34.0",
+    "imageio-ffmpeg>=0.4.9",
+    "scipy>=1.11.0",
+    "safetensors>=0.4.2",
+]
 
 [project.scripts]
 myvideo = "myvideo.cli.main:cli"

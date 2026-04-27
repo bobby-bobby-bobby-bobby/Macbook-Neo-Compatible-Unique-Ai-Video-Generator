@@ -45,7 +45,10 @@ def concat_videos(video_paths: list[str | Path], output_video: str | Path, reenc
     output_video = Path(output_video)
     output_video.parent.mkdir(parents=True, exist_ok=True)
     list_file = output_video.parent / "concat_list.txt"
-    lines = [f"file '{Path(path).resolve()}'" for path in video_paths]
+    # ffmpeg concat demuxer uses its own escaping: single quotes delimit paths,
+    # and a literal single quote is written as '\'' (end-quote, escaped-quote, re-open-quote).
+    escaped = [str(Path(path).resolve()).replace("'", "'\\''") for path in video_paths]
+    lines = [f"file '{p}'" for p in escaped]
     list_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(list_file)]

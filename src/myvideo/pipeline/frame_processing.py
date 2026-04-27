@@ -28,7 +28,7 @@ def upscale_frames_low_memory(
 
     infer_dtype = get_inference_dtype(profile.device)
     model = TinyUpscaler(scale=scale).to(device=device, dtype=infer_dtype)
-    state = torch.load(checkpoint_path, map_location=device)
+    state = torch.load(checkpoint_path, map_location=device, weights_only=True)
     model.load_state_dict(state["model"])
     model.eval()
 
@@ -64,7 +64,7 @@ def interpolate_frames_low_memory(
 
     infer_dtype = get_inference_dtype(profile.device)
     model = TinyFrameInterpolator().to(device=device, dtype=infer_dtype)
-    state = torch.load(checkpoint_path, map_location=device)
+    state = torch.load(checkpoint_path, map_location=device, weights_only=True)
     model.load_state_dict(state["model"])
     model.eval()
 
