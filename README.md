@@ -53,3 +53,12 @@ myvideo make --prompt-file prompt.txt --output-video outputs/final.mp4 --mode lo
 - `notebooks/03_train_upscaler_colab.ipynb`
 - `notebooks/04_train_interpolator_colab.ipynb`
 - `notebooks/05_quantize_export_and_inference_tests.ipynb`
+
+
+## Performance / Reliability Improvements
+
+- Inference scripts now use `torch.inference_mode()` and optional mixed precision for CUDA/MPS.
+- Added centralized cache clearing utilities to reduce memory spikes on long runs.
+- Segment frame flattening now avoids duplicate boundary frames to reduce extra work.
+- FFmpeg concat now defaults to compatibility-first re-encode mode.
+- Added basic planner tests under `tests/` for quick regression checks.

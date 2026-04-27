@@ -11,6 +11,7 @@ from torchvision import transforms
 
 from myvideo.inbetween.model import TinyInbetweener
 from myvideo.utils.hardware import detect_hardware
+from myvideo.utils.perf import clear_device_cache, get_inference_dtype, maybe_autocast
 
 
 
@@ -42,7 +43,8 @@ def main() -> None:
     profile = detect_hardware()
     device = torch.device(profile.device)
 
-    model = TinyInbetweener().to(device)
+    infer_dtype = get_inference_dtype(profile.device)
+    model = TinyInbetweener().to(device=device, dtype=infer_dtype)
     state = torch.load(args.checkpoint, map_location=device)
     model.load_state_dict(state["model"])
     model.eval()
@@ -55,12 +57,12 @@ def main() -> None:
     if len(keyframes) < 2:
         raise ValueError("Need at least two keyframes to run inbetweening")
 
-    with torch.no_grad():
+    with torch.inference_mode(), maybe_autocast(profile.device, infer_dtype):
         for idx in range(len(keyframes) - 1):
             a_path = keyframes[idx]
             b_path = keyframes[idx + 1]
-            frame_a = _load_img(a_path, args.image_size).to(device)
-            frame_b = _load_img(b_path, args.image_size).to(device)
+            frame_a = _load_img(a_path, args.image_size).to(device=device, dtype=infer_dtype)
+            frame_b = _load_img(b_path, args.image_size).to(device=device, dtype=infer_dtype)
 
             pair_dir = output_dir / f"pair_{idx:04d}"
             pair_dir.mkdir(parents=True, exist_ok=True)
@@ -68,16 +70,13 @@ def main() -> None:
 
             for j in range(1, args.frames_between + 1):
                 t_val = j / (args.frames_between + 1)
-                t = torch.tensor([t_val], device=device)
+                t = torch.tensor([t_val], device=device, dtype=infer_dtype)
                 mid = model(frame_a, frame_b, t)
                 _save_img(mid, pair_dir / f"{j:04d}.png")
 
             _save_img(frame_b, pair_dir / f"{args.frames_between + 1:04d}.png")
 
-            if profile.device == "mps":
-                torch.mps.empty_cache()
-            elif profile.device == "cuda":
-                torch.cuda.empty_cache()
+            clear_device_cache(profile.device)
 
     print(f"Saved inbetweened segments to {output_dir}")
 

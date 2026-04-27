@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 from myvideo.assemble.ffmpeg_tools import concat_videos, frames_to_video
@@ -101,18 +102,24 @@ def run_full_pipeline(
             check=True,
         )
 
-        # flatten pair folders to ordered frame folder
+        # flatten pair folders to ordered frame folder, skipping repeated boundaries
         flat_dir = seg_dir / "frames_flat"
         flat_dir.mkdir(parents=True, exist_ok=True)
         frame_idx = 0
-        for pair_dir in sorted(inb_dir.glob("pair_*")):
-            for frame_path in sorted(pair_dir.glob("*.png")):
+        pair_dirs = sorted(inb_dir.glob("pair_*"))
+        for pair_i, pair_dir in enumerate(pair_dirs):
+            pair_frames = sorted(pair_dir.glob("*.png"))
+            if pair_i > 0:
+                pair_frames = pair_frames[1:]
+            for frame_path in pair_frames:
                 target = flat_dir / f"{frame_idx:06d}.png"
-                target.write_bytes(frame_path.read_bytes())
+                shutil.copy2(frame_path, target)
                 frame_idx += 1
 
-        upscale_frames_low_memory(flat_dir, up_dir, upscaler_checkpoint, scale=max(1, config.video.upscaled_width // config.video.base_width))
-        interpolate_frames_low_memory(up_dir, int_dir, interpolator_checkpoint, multiplier=max(1, config.video.target_fps // 12))
+        upscale_scale = max(2, min(3, round(config.video.upscaled_width / max(1, config.video.base_width))))
+        fps_multiplier = max(2, round(config.video.target_fps / 12))
+        upscale_frames_low_memory(flat_dir, up_dir, upscaler_checkpoint, scale=upscale_scale)
+        interpolate_frames_low_memory(up_dir, int_dir, interpolator_checkpoint, multiplier=fps_multiplier)
 
         seg_video = seg_dir / "segment.mp4"
         frames_to_video(int_dir, seg_video, fps=config.video.target_fps)

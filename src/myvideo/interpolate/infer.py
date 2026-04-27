@@ -12,6 +12,7 @@ from torchvision import transforms
 
 from myvideo.interpolate.model import TinyFrameInterpolator
 from myvideo.utils.hardware import detect_hardware
+from myvideo.utils.perf import clear_device_cache, get_inference_dtype, maybe_autocast
 
 
 
@@ -59,7 +60,8 @@ def main() -> None:
     if len(frame_paths) < 2:
         raise ValueError("Need at least 2 frames")
 
-    model = TinyFrameInterpolator().to(device)
+    infer_dtype = get_inference_dtype(profile.device)
+    model = TinyFrameInterpolator().to(device=device, dtype=infer_dtype)
     state = torch.load(args.checkpoint, map_location=device)
     model.load_state_dict(state["model"])
     model.eval()
@@ -67,25 +69,22 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    with torch.no_grad():
+    with torch.inference_mode(), maybe_autocast(profile.device, infer_dtype):
         write_index = 0
         for i in range(len(frame_paths) - 1):
-            a = _to_tensor(frame_paths[i]).to(device)
-            b = _to_tensor(frame_paths[i + 1]).to(device)
+            a = _to_tensor(frame_paths[i]).to(device=device, dtype=infer_dtype)
+            b = _to_tensor(frame_paths[i + 1]).to(device=device, dtype=infer_dtype)
 
             _save_tensor(a.cpu(), output_dir / f"{write_index:06d}.png")
             write_index += 1
 
             for m in range(1, args.multiplier):
-                t = torch.tensor([m / args.multiplier], device=device)
+                t = torch.tensor([m / args.multiplier], device=device, dtype=infer_dtype)
                 mid = model(a, b, t)
                 _save_tensor(mid.cpu(), output_dir / f"{write_index:06d}.png")
                 write_index += 1
 
-            if profile.device == "mps":
-                torch.mps.empty_cache()
-            elif profile.device == "cuda":
-                torch.cuda.empty_cache()
+            clear_device_cache(profile.device)
 
         _save_tensor(_to_tensor(frame_paths[-1]), output_dir / f"{write_index:06d}.png")
 

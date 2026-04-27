@@ -9,6 +9,7 @@ import torch
 from myvideo.interpolate.model import TinyFrameInterpolator
 from myvideo.upscale.model import TinyUpscaler
 from myvideo.utils.hardware import detect_hardware
+from myvideo.utils.perf import clear_device_cache, get_inference_dtype, maybe_autocast
 
 
 
@@ -25,7 +26,8 @@ def upscale_frames_low_memory(
     profile = detect_hardware()
     device = torch.device(profile.device)
 
-    model = TinyUpscaler(scale=scale).to(device)
+    infer_dtype = get_inference_dtype(profile.device)
+    model = TinyUpscaler(scale=scale).to(device=device, dtype=infer_dtype)
     state = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(state["model"])
     model.eval()
@@ -36,17 +38,14 @@ def upscale_frames_low_memory(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     frames = sorted([p for p in in_dir.iterdir() if p.suffix.lower() in {".png", ".jpg", ".jpeg"}])
-    with torch.no_grad():
+    with torch.inference_mode(), maybe_autocast(profile.device, infer_dtype):
         for idx, path in enumerate(frames):
-            x = tf(Image.open(path).convert("RGB")).unsqueeze(0).to(device)
+            x = tf(Image.open(path).convert("RGB")).unsqueeze(0).to(device=device, dtype=infer_dtype)
             y = model(x)
             arr = (y.squeeze(0).permute(1, 2, 0).cpu().numpy() * 255.0).clip(0, 255).astype("uint8")
             Image.fromarray(arr).save(out_dir / f"{idx:06d}.png")
 
-            if profile.device == "mps":
-                torch.mps.empty_cache()
-            elif profile.device == "cuda":
-                torch.cuda.empty_cache()
+            clear_device_cache(profile.device)
 
 
 
@@ -63,7 +62,8 @@ def interpolate_frames_low_memory(
     profile = detect_hardware()
     device = torch.device(profile.device)
 
-    model = TinyFrameInterpolator().to(device)
+    infer_dtype = get_inference_dtype(profile.device)
+    model = TinyFrameInterpolator().to(device=device, dtype=infer_dtype)
     state = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(state["model"])
     model.eval()
@@ -78,25 +78,22 @@ def interpolate_frames_low_memory(
         arr = (x.squeeze(0).permute(1, 2, 0).cpu().numpy() * 255.0).clip(0, 255).astype("uint8")
         Image.fromarray(arr).save(p)
 
-    with torch.no_grad():
+    with torch.inference_mode(), maybe_autocast(profile.device, infer_dtype):
         out_idx = 0
         for i in range(len(frames) - 1):
-            a = tf(Image.open(frames[i]).convert("RGB")).unsqueeze(0).to(device)
-            b = tf(Image.open(frames[i + 1]).convert("RGB")).unsqueeze(0).to(device)
+            a = tf(Image.open(frames[i]).convert("RGB")).unsqueeze(0).to(device=device, dtype=infer_dtype)
+            b = tf(Image.open(frames[i + 1]).convert("RGB")).unsqueeze(0).to(device=device, dtype=infer_dtype)
 
             save_tensor(a.cpu(), out_dir / f"{out_idx:06d}.png")
             out_idx += 1
 
             for m in range(1, multiplier):
-                t = torch.tensor([m / multiplier], device=device)
+                t = torch.tensor([m / multiplier], device=device, dtype=infer_dtype)
                 mid = model(a, b, t)
                 save_tensor(mid.cpu(), out_dir / f"{out_idx:06d}.png")
                 out_idx += 1
 
-            if profile.device == "mps":
-                torch.mps.empty_cache()
-            elif profile.device == "cuda":
-                torch.cuda.empty_cache()
+            clear_device_cache(profile.device)
 
         if frames:
             last = tf(Image.open(frames[-1]).convert("RGB")).unsqueeze(0)

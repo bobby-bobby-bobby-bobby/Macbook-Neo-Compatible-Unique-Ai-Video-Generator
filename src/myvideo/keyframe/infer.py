@@ -11,6 +11,7 @@ from PIL import Image
 
 from myvideo.keyframe.model import TinyKeyframeGenerator
 from myvideo.utils.hardware import detect_hardware
+from myvideo.utils.perf import clear_device_cache
 
 
 
@@ -50,7 +51,7 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    with torch.no_grad():
+    with torch.inference_mode():
         for segment in segments:
             segment_id = segment["segment_id"]
             prompt = f"{segment['style']}. {segment['scene_description']}. Motion: {segment['motion_plan']}"
@@ -69,10 +70,7 @@ def main() -> None:
                 out_path = output_dir / f"segment_{segment_id:02d}_key_{key_idx:02d}.png"
                 pil_img.save(out_path)
 
-                if hardware.device == "mps":
-                    torch.mps.empty_cache()
-                elif hardware.device == "cuda":
-                    torch.cuda.empty_cache()
+                clear_device_cache(hardware.device)
 
     print(f"Generated keyframes in {output_dir}")
 

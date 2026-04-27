@@ -11,6 +11,7 @@ from torchvision import transforms
 
 from myvideo.upscale.model import TinyUpscaler
 from myvideo.utils.hardware import detect_hardware
+from myvideo.utils.perf import clear_device_cache, get_inference_dtype, maybe_autocast
 
 
 
@@ -35,7 +36,8 @@ def main() -> None:
     profile = detect_hardware()
     device = torch.device(profile.device)
 
-    model = TinyUpscaler(scale=args.scale).to(device)
+    infer_dtype = get_inference_dtype(profile.device)
+    model = TinyUpscaler(scale=args.scale).to(device=device, dtype=infer_dtype)
     ckpt = torch.load(args.checkpoint, map_location=device)
     model.load_state_dict(ckpt["model"])
     model.eval()
@@ -47,17 +49,14 @@ def main() -> None:
     tf = transforms.ToTensor()
     frames = sorted([p for p in in_dir.iterdir() if p.suffix.lower() in {".png", ".jpg", ".jpeg"}])
 
-    with torch.no_grad():
+    with torch.inference_mode(), maybe_autocast(profile.device, infer_dtype):
         for idx, frame_path in enumerate(frames):
             frame = Image.open(frame_path).convert("RGB")
-            x = tf(frame).unsqueeze(0).to(device)
+            x = tf(frame).unsqueeze(0).to(device=device, dtype=infer_dtype)
             y = model(x)
             _tensor_to_pil(y.detach().cpu()).save(out_dir / f"{idx:06d}.png")
 
-            if profile.device == "mps":
-                torch.mps.empty_cache()
-            elif profile.device == "cuda":
-                torch.cuda.empty_cache()
+            clear_device_cache(profile.device)
 
     print(f"Upscaled {len(frames)} frames to {out_dir}")
 
