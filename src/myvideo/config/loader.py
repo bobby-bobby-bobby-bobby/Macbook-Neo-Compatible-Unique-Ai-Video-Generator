@@ -34,14 +34,14 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 
 
-def load_config(mode: str, config_dir: str | Path = "configs") -> PipelineConfig:
+def load_config(mode: str, config_dir: str | Path | None = None) -> PipelineConfig:
     """Load config by mode and adapt it to detected hardware.
 
     Args:
         mode: preview, final, or low_memory
         config_dir: directory containing base.yaml and mode-specific YAML files
     """
-    config_dir = Path(config_dir)
+    config_dir = Path(config_dir) if config_dir else Path(__file__).parents[3] / "configs"
     base = load_yaml(config_dir / "base.yaml")
     mode_file = config_dir / f"{mode}.yaml"
     if not mode_file.exists():
