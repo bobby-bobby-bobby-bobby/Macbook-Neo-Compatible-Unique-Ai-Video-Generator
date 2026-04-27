@@ -1,0 +1,17 @@
+runtime:
+  mode: low_memory
+  use_mixed_precision: false
+  enable_compile: false
+
+video:
+  target_fps: 12
+  base_width: 360
+  base_height: 202
+  upscaled_width: 720
+  upscaled_height: 404
+
+memory:
+  max_frames_in_memory: 3
+  stream_chunks: true
+  offload_to_cpu_when_idle: true
+  clear_cache_between_segments: true

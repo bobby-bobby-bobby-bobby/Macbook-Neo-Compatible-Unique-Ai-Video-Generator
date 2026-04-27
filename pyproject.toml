@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "myvideo"
+version = "0.1.0"
+description = "Hybrid 2D video generation system optimized for Apple Silicon A18 with 8GB RAM"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "myvideo team" }]
+dependencies = []
+
+[project.scripts]
+myvideo = "myvideo.cli.main:cli"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

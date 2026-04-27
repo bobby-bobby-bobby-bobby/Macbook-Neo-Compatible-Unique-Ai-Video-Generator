@@ -1,0 +1,13 @@
+runtime:
+  mode: final
+  use_mixed_precision: true
+
+video:
+  target_fps: 24
+  base_width: 640
+  base_height: 360
+  upscaled_width: 1280
+  upscaled_height: 720
+
+memory:
+  max_frames_in_memory: 8
