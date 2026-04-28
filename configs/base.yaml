@@ -1,0 +1,21 @@
+runtime:
+  mode: base
+  device_preference: auto
+  batch_size: 1
+  seed: 42
+  use_mixed_precision: true
+  enable_compile: false
+
+video:
+  total_duration_sec: 60
+  target_fps: 24
+  base_width: 640
+  base_height: 360
+  upscaled_width: 1280
+  upscaled_height: 720
+
+memory:
+  max_frames_in_memory: 8
+  stream_chunks: true
+  offload_to_cpu_when_idle: true
+  clear_cache_between_segments: true
